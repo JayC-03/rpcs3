@@ -390,7 +390,7 @@ void SPUThread::cpu_task()
 		(fmt::throw_exception<std::logic_error>("Invalid SPU decoder"), nullptr));
 
 	// LS pointer
-	const auto base = vm::_ptr<const u8>(offset);
+	const uptr base = (uptr)(vm::base(offset));
 	const auto bswap4 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
 
 	v128 _op;
@@ -430,8 +430,8 @@ void SPUThread::cpu_task()
 			if (LIKELY(func1(*this, {_op._u32[1]})))
 			{
 				pc += 4;
-				u32 op2 = _op._u32[2];
-				u32 op3 = _op._u32[3];
+				const u32 op2 = _op._u32[2];
+				const u32 op3 = _op._u32[3];
 				_op.vi =  _mm_shuffle_epi8(_mm_load_si128(reinterpret_cast<const __m128i*>(base + pc + 8)), bswap4);
 				func0 = table[spu_decode(_op._u32[0])];
 				func1 = table[spu_decode(_op._u32[1])];
@@ -585,11 +585,10 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 	{
 		auto vdst = static_cast<__m128i*>(dst);
 		auto vsrc = static_cast<const __m128i*>(src);
-		auto vcnt = size / sizeof(__m128i);
 
 		//if (is_get && !from_mfc)
 		{
-			while (vcnt >= 8)
+			while (size >= 128)
 			{
 				const __m128i data[]
 				{
@@ -612,13 +611,14 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 				_mm_store_si128(vdst + 6, data[6]);
 				_mm_store_si128(vdst + 7, data[7]);
 
-				vcnt -= 8;
+				size -= 128;
 				vsrc += 8;
 				vdst += 8;
 			}
 
-			while (vcnt--)
+			while (size)
 			{
+				size -= 16;
 				_mm_store_si128(vdst++, _mm_load_si128(vsrc++));
 			}
 
@@ -626,7 +626,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 		}
 
 		// Disabled
-		while (vcnt >= 8)
+		/*while (vcnt >= 8)
 		{
 			const __m128i data[]
 			{
@@ -649,7 +649,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 			_mm_stream_si128(vdst + 6, data[6]);
 			_mm_stream_si128(vdst + 7, data[7]);
 
-			vcnt -= 8;
+			vcnt -= 128;
 			vsrc += 8;
 			vdst += 8;
 		}
@@ -657,7 +657,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 		while (vcnt--)
 		{
 			_mm_stream_si128(vdst++, _mm_load_si128(vsrc++));
-		}
+		}*/
 	}
 	}
 
@@ -1087,9 +1087,10 @@ void SPUThread::set_interrupt_status(bool enable)
 	}
 }
 
-u32 SPUThread::get_ch_count(u32 ch)
+u32 SPUThread::get_ch_count(u32 ch) 
 {
-	LOG_TRACE(SPU, "get_ch_count(ch=%d [%s])", ch, ch < 128 ? spu_ch_name[ch] : "???");
+	ASSUME(ch < 32);
+	//LOG_TRACE(SPU, "get_ch_count(ch=%d [%s])", ch, spu_ch_name[ch]);
 
 	switch (ch)
 	{
@@ -1098,21 +1099,21 @@ u32 SPUThread::get_ch_count(u32 ch)
 	case SPU_RdInMbox:        return ch_in_mbox.get_count();
 	case MFC_RdTagStat:       return ch_tag_stat.get_count();
 	case MFC_RdListStallStat: return ch_stall_stat.get_count();
-	case MFC_WrTagUpdate:     return ch_tag_upd == 0;
+	case MFC_WrTagUpdate:     return 1;
 	case SPU_RdSigNotify1:    return ch_snr1.get_count();
 	case SPU_RdSigNotify2:    return ch_snr2.get_count();
 	case MFC_RdAtomicStat:    return ch_atomic_stat.get_count();
 	case SPU_RdEventStat:     return get_events() != 0;
-	case MFC_Cmd:             return std::max(16 - mfc_queue.size(), (u32)0);
+	case MFC_Cmd:             return 16 - mfc_queue.size();
+	default : ASSUME(0);
 	}
-
-	fmt::throw_exception("Unknown/illegal channel (ch=%d [%s])" HERE, ch, ch < 128 ? spu_ch_name[ch] : "???");
+	return 0;
+	//fmt::throw_exception("Unknown/illegal channel (ch=%d )" HERE, ch);
 }
 
 bool SPUThread::get_ch_value(u32 ch, u32& out)
 {
-	LOG_TRACE(SPU, "get_ch_value(ch=%d [%s])", ch, ch < 128 ? spu_ch_name[ch] : "???");
-
+	ASSUME(ch < 32);
 	auto read_channel = [&](spu_channel_t& channel)
 	{
 		if (channel.try_pop(out))
@@ -1123,25 +1124,28 @@ bool SPUThread::get_ch_value(u32 ch, u32& out)
 			busy_wait();
 		}
 
-		u32 ctr = 0;
-		while (!channel.try_pop(out))
 		{
-			if (test(state, cpu_flag::stop))
+			u32 ctr = 0;
+			while (!channel.get_count())
 			{
-				return false;
-			}
+				if (test(state, cpu_flag::stop))
+				{
+					return false;
+				}
 
-			if (ctr > 10000)
-			{
-				ctr = 0;
-				std::this_thread::yield();
-			}
-			else
-			{
-				ctr++;
-				thread_ctrl::wait();
+				if (ctr > 10000)
+				{
+					ctr = 0;
+					std::this_thread::yield();
+				}
+				else
+				{
+					ctr++;
+					thread_ctrl::wait();
+				}
 			}
 		}
+		out = channel.silent_pop();
 
 		return true;
 	};
@@ -1279,7 +1283,7 @@ bool SPUThread::get_ch_value(u32 ch, u32& out)
 
 bool SPUThread::set_ch_value(u32 ch, u32 value)
 {
-	LOG_TRACE(SPU, "set_ch_value(ch=%d [%s], value=0x%x)", ch, ch < 128 ? spu_ch_name[ch] : "???", value);
+	ASSUME(ch < 32);
 
 	switch (ch)
 	{
@@ -1465,15 +1469,10 @@ bool SPUThread::set_ch_value(u32 ch, u32 value)
 			break;
 		}
 
-		ch_tag_stat.set_value(0, false);
+		ch_tag_stat.data.raw().count = false;
 		ch_tag_upd = value;
 
-		if (ch_tag_mask == 0)
-		{
-			// TODO
-			ch_tag_stat.set_value(0);
-		}
-		else if (mfc_queue.size() == 0 && (!value || ch_tag_upd.exchange(0)))
+		if (mfc_queue.size() == 0 && (!value || ch_tag_upd.exchange(0)))
 		{
 			ch_tag_stat.set_value(ch_tag_mask);
 		}

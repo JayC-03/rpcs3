@@ -150,9 +150,9 @@ struct spu_channel_t
 {
 	struct alignas(8) sync_var_t
 	{
+		u32 value;
 		bool count; // value available
 		bool wait; // notification required
-		u32 value;
 	};
 
 	atomic_t<sync_var_t> data;
@@ -174,19 +174,20 @@ public:
 	}
 
 	// push performing bitwise OR with previous value, may require notification
-	void push_or(cpu_thread& spu, u32 value)
+	void push_or(cpu_thread& spu, const u32 value)
 	{
-		const auto old = data.fetch_op([=](sync_var_t& data)
+		const bool wait = data.load().count;
+		data.atomic_op([&](sync_var_t& data)
 		{
 			data.count = true;
 			data.wait = false;
 			data.value |= value;
 		});
 
-		if (old.wait) spu.notify();
+		if (wait) spu.notify();
 	}
 
-	bool push_and(u32 value)
+	bool push_and(const u32 value)
 	{
 		const auto old = data.fetch_op([=](sync_var_t& data)
 		{
@@ -197,16 +198,11 @@ public:
 	}
 
 	// push unconditionally (overwriting previous value), may require notification
-	void push(cpu_thread& spu, u32 value)
+	FORCE_INLINE void push(cpu_thread& spu, const u32 value)
 	{
-		const auto old = data.fetch_op([=](sync_var_t& data)
-		{
-			data.count = true;
-			data.wait = false;
-			data.value = value;
-		});
-
-		if (old.wait) spu.notify();
+		const bool notify = data.load().wait;
+		*reinterpret_cast<atomic_t<u64>*>(&data.raw()) = value | 0x100000000;
+		if (notify) spu.notify();
 	}
 
 	// returns true on success
@@ -214,30 +210,20 @@ public:
 	{
 		const auto old = data.fetch_op([&](sync_var_t& data)
 		{
-			if (data.count)
-			{
-				data.wait = false;
-				out = data.value;
-			}
-			else
-			{
-				data.wait = true;
-			}
-
+			data.wait = data.count ^ 1;
+			out = data.value;
 			data.count = false;
-			data.value = 0; // ???
 		});
 
 		return old.count;
 	}
 
 	// pop unconditionally (loading last value), may require notification
-	u32 pop(cpu_thread& spu)
+	u32 pop(const cpu_thread& spu)
 	{
 		const auto old = data.fetch_op([](sync_var_t& data)
 		{
-			data.wait = false;
-			data.count = false;
+			*reinterpret_cast<u32*>(&data.count) = 0;
 			// value is not cleared and may be read again
 		});
 
@@ -246,17 +232,23 @@ public:
 		return old.value;
 	}
 
-	void set_value(u32 value, bool count = true)
+	u32 silent_pop()
 	{
-		data.store({ count, false, value });
+		*reinterpret_cast<u32*>(&(data.raw().count)) = 0;
+		return data.load().value;
 	}
 
-	u32 get_value()
+	FORCE_INLINE void set_value(const u64 value)
+	{
+		*reinterpret_cast<u64*>(&data.raw()) = value | 0x100000000;
+	}
+
+	u32 get_value() const
 	{
 		return data.load().value;
 	}
 
-	u32 get_count()
+	u32 get_count() const
 	{
 		return data.load().count;
 	}

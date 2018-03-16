@@ -101,7 +101,7 @@ class mfc_thread : public cpu_thread
 	std::vector<spu_ptr> m_spus;
 
 	// SPU threads to enqueue
-	lf_mpsc<spu_ptr, 128> m_spuq;
+	lf_mpsc<spu_ptr, 16> m_spuq;
 
 public:
 	mfc_thread();

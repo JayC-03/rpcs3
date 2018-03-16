@@ -121,10 +121,7 @@ void mfc_thread::cpu_task()
 		{
 			SPUThread& spu = *thread_ptr;
 
-			const auto proxy_size = spu.mfc_proxy.size();
-			const auto queue_size = spu.mfc_queue.size();
-
-			if (proxy_size)
+			if (spu.mfc_proxy.size())
 			{
 				const auto& cmd = spu.mfc_proxy[0];
 
@@ -139,14 +136,11 @@ void mfc_thread::cpu_task()
 				no_updates = 0;
 			}
 
-			test_state();
-
-			if (queue_size)
+			if (spu.mfc_queue.size())
 			{
 				u32 fence_mask = 0; // Using this instead of stall_mask to avoid a possible race condition
 				u32 barrier_mask = 0;
-				bool first = true;
-				for (u32 i = 0; i < spu.mfc_queue.size(); i++, first = false)
+				for (u32 i = 0; i < spu.mfc_queue.size(); i++)
 				{
 					auto& cmd = spu.mfc_queue[i];
 
@@ -252,7 +246,7 @@ void mfc_thread::cpu_task()
 					{
 						// Raw barrier commands / sync commands are tag agnostic and hard sync the mfc list
 						// Need to gaurentee everything ahead of it has processed before this
-						if (first)
+						if (i == 0)
 							cmd.size = 0;
 						else
 							break;
@@ -262,7 +256,7 @@ void mfc_thread::cpu_task()
 						spu.do_dma_transfer(cmd);
 						cmd.size = 0;
 					}
-					if (!cmd.size && first)
+					if (!cmd.size && i == 0)
 					{
 						spu.mfc_queue.end_pop();
 						no_updates = 0;
@@ -289,7 +283,8 @@ void mfc_thread::cpu_task()
 				// Mask incomplete transfers
 				u32 completed = spu.ch_tag_mask;
 				{
-					for (u32 i = 0; i < spu.mfc_queue.size(); i++)
+					const u32 size = spu.mfc_queue.size();
+					for (u32 i = 0; i < size; ++i)
 					{
 						const auto& _cmd = spu.mfc_queue[i];
 						if (_cmd.size)

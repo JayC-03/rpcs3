@@ -4,9 +4,9 @@
 
 template<typename T, u32 I, u32 N> using ppu_bf_t = bf_t<T, sizeof(T) * 8 - N - I, N>;
 
-typedef const union
+union ppu_opcode_t
 {
-	const u32 opcode;
+	u32 opcode;
 
 	ppu_bf_t<u32, 0, 6> main; // 0..5
 	cf_t<ppu_bf_t<u32, 30, 1>, ppu_bf_t<u32, 16, 5>> sh64; // 30 + 16..20
@@ -58,7 +58,7 @@ typedef const union
 	ppu_bf_t<u32, 15, 1> l15; // 15
 	cf_t<ppu_bf_t<s32, 16, 14>, ff_t<u32, 0, 2>> bt14;
 	cf_t<ppu_bf_t<s32, 6, 24>, ff_t<u32, 0, 2>> bt24;
-} ppu_opcode_t;
+};
 
 inline u64 ppu_rotate_mask(u32 mb, u32 me)
 {
