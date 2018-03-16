@@ -1639,7 +1639,7 @@ bool spu_interpreter::SELB(SPUThread& spu, spu_opcode_t op)
 
 bool spu_interpreter_precise::SHUFB(SPUThread& spu, spu_opcode_t op)
 {
-	alignas(16) static thread_local u8 s_lut[256]
+	alignas(16) static const thread_local u8 s_lut[256]
 	{
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

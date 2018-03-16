@@ -2,9 +2,9 @@
 
 #include "../../../Utilities/BitField.h"
 
-union spu_opcode_t
+typedef const union
 {
-	u32 opcode;
+	const u32 opcode;
 
 	bf_t<u32, 0, 7> rt; // 25..31, for 3-op instructions
 	bf_t<u32, 0, 7> rc; // 25..31
@@ -23,19 +23,19 @@ union spu_opcode_t
 	bf_t<u32, 7, 16> i16; // 9..24
 	bf_t<s32, 7, 16> si16; // 9..24, signed
 	bf_t<u32, 7, 18> i18; // 7..24
-};
+} spu_opcode_t;
 
-inline u32 spu_branch_target(u32 pc, u32 imm = 0)
+inline u32 spu_branch_target(const u32 pc, const u32 imm = 0)
 {
 	return (pc + (imm << 2)) & 0x3fffc;
 }
 
-inline u32 spu_ls_target(u32 pc, u32 imm = 0)
+inline u32 spu_ls_target(const u32 pc, const u32 imm = 0)
 {
 	return (pc + (imm << 2)) & 0x3fff0;
 }
 
-static u32 spu_decode(u32 inst)
+static u32 spu_decode(const u32 inst)
 {
 	return inst >> 21;
 }

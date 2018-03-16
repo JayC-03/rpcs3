@@ -126,7 +126,7 @@ union alignas(16) v128
 		}
 	} _bit;
 
-	static v128 from64(u64 _0, u64 _1 = 0)
+	static v128 from64(const u64 _0, const u64 _1 = 0)
 	{
 		v128 ret;
 		ret._u64[0] = _0;
@@ -134,12 +134,12 @@ union alignas(16) v128
 		return ret;
 	}
 
-	static v128 from64r(u64 _1, u64 _0 = 0)
+	static v128 from64r(const u64 _1, const u64 _0 = 0)
 	{
 		return from64(_0, _1);
 	}
 
-	static v128 from32(u32 _0, u32 _1 = 0, u32 _2 = 0, u32 _3 = 0)
+	static v128 from32(const u32 _0, const u32 _1 = 0, const u32 _2 = 0, const u32 _3 = 0)
 	{
 		v128 ret;
 		ret._u32[0] = _0;
@@ -149,54 +149,54 @@ union alignas(16) v128
 		return ret;
 	}
 
-	static v128 from32r(u32 _3, u32 _2 = 0, u32 _1 = 0, u32 _0 = 0)
+	static v128 from32r(const u32 _3, const u32 _2 = 0, const u32 _1 = 0, const u32 _0 = 0)
 	{
 		return from32(_0, _1, _2, _3);
 	}
 
-	static v128 from32p(u32 value)
+	static v128 from32p(const u32 value)
 	{
 		v128 ret;
 		ret.vi = _mm_set1_epi32(static_cast<s32>(value));
 		return ret;
 	}
 
-	static v128 from16p(u16 value)
+	static v128 from16p(const u16 value)
 	{
 		v128 ret;
 		ret.vi = _mm_set1_epi16(static_cast<s16>(value));
 		return ret;
 	}
 
-	static v128 from8p(u8 value)
+	static v128 from8p(const u8 value)
 	{
 		v128 ret;
 		ret.vi = _mm_set1_epi8(static_cast<s8>(value));
 		return ret;
 	}
 
-	static v128 fromBit(u32 bit)
+	static v128 fromBit(const u32 bit)
 	{
 		v128 ret = {};
 		ret._bit[bit] = true;
 		return ret;
 	}
 
-	static v128 fromV(__m128i value)
+	static v128 fromV(const __m128i value)
 	{
 		v128 ret;
 		ret.vi = value;
 		return ret;
 	}
 
-	static v128 fromF(__m128 value)
+	static v128 fromF(const __m128 value)
 	{
 		v128 ret;
 		ret.vf = value;
 		return ret;
 	}
 
-	static v128 fromD(__m128d value)
+	static v128 fromD(const __m128d value)
 	{
 		v128 ret;
 		ret.vd = value;
