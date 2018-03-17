@@ -173,23 +173,15 @@ namespace vm
 	// Get memory block associated with optionally specified memory location or optionally specified address
 	std::shared_ptr<block_t> get(memory_location_t location, u32 addr = 0);
 
-	// Get PS3/PSV virtual memory address from the provided pointer (nullptr always converted to 0)
+	// Get PS3/PSV virtual memory address from the provided pointer (out of vm area pointers always be converted to 0)
 	inline vm::addr_t get_addr(const void* real_ptr)
 	{
-		if (!real_ptr)
+		if (*(u32*)((uptr)&real_ptr + sizeof(u32)) == *(u32*)((uptr)&g_base_addr + sizeof(u32)))
 		{
-			return vm::addr_t{};
+			return static_cast<vm::addr_t>((uptr)real_ptr);
 		}
 
-		const std::ptrdiff_t diff = static_cast<const u8*>(real_ptr) - g_base_addr;
-		const u32 res = static_cast<u32>(diff);
-
-		if (res == diff)
-		{
-			return static_cast<vm::addr_t>(res);
-		}
-
-		fmt::throw_exception("Not a virtual memory pointer (%p)", real_ptr);
+		return vm::addr_t{};
 	}
 
 	template<typename T>
@@ -253,19 +245,19 @@ namespace vm
 	}
 
 	// Convert specified PS3/PSV virtual memory address to a pointer for common access
-	inline void* base(u32 addr)
+	inline void* base(const u32 addr)
 	{
-		return g_base_addr + addr;
+		return (void*)((uptr)g_base_addr | addr);
 	}
 
 	inline const u8& read8(u32 addr)
 	{
-		return g_base_addr[addr];
+		return *(u8*)((uptr)g_base_addr | addr);
 	}
 
 	inline void write8(u32 addr, u8 value)
 	{
-		g_base_addr[addr] = value;
+		*(u8*)((uptr)g_base_addr | addr) = value;
 	}
 
 	inline namespace ps3_

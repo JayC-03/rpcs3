@@ -575,7 +575,13 @@ public:
 
 	u32 pc = 0; //
 	const u32 index; // SPU index
-	const u32 offset; // SPU LS offset
+
+	union
+	{
+		const uptr offset; // SPU LS start pointer
+		const u32 vm_offset; // Since g_base_addr's first dword is always 0, we can use the low dword of vm pointers addresses to get the vm offset equivelent.
+	};
+
 	lv2_spu_group* const group; // SPU Thread Group
 
 	const std::string m_name; // Thread name
@@ -602,16 +608,21 @@ public:
 
 	void fast_call(u32 ls_addr);
 
+	inline bool isRawSPU() const
+	{
+		return UNLIKELY(id < 0x02000000); // haha 
+	}
+
 	// Convert specified SPU LS address to a pointer of specified (possibly converted to BE) type
 	template<typename T>
-	inline to_be_t<T>* _ptr(u32 lsa)
+	constexpr inline to_be_t<T>* _ptr(const u32 lsa)
 	{
-		return static_cast<to_be_t<T>*>(vm::base(offset + lsa));
+		return reinterpret_cast<to_be_t<T>*>(offset + lsa);
 	}
 
 	// Convert specified SPU LS address to a reference of specified (possibly converted to BE) type
 	template<typename T>
-	inline to_be_t<T>& _ref(u32 lsa)
+	inline to_be_t<T>& _ref(const u32 lsa)
 	{
 		return *_ptr<T>(lsa);
 	}

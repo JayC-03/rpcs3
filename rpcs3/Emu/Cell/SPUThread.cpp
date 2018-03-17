@@ -297,7 +297,7 @@ void SPUThread::on_init(const std::shared_ptr<void>& _this)
 {
 	if (!offset)
 	{
-		const_cast<u32&>(offset) = verify("SPU LS" HERE, vm::alloc(0x40000, vm::main));
+		const_cast<uptr&>(offset) = (verify("SPU LS" HERE, vm::alloc(0x40000, vm::main))  + reinterpret_cast<uptr>(vm::g_base_addr));
 
 		cpu_thread::on_init(_this);
 	}
@@ -305,7 +305,7 @@ void SPUThread::on_init(const std::shared_ptr<void>& _this)
 
 std::string SPUThread::get_name() const
 {
-	return fmt::format("%sSPU[0x%x] Thread (%s)", offset >= RAW_SPU_BASE_ADDR ? "Raw" : "", id, m_name);
+	return fmt::format("%sSPU[0x%x] Thread (%s)", (isRawSPU() ? "Raw" : ""), id, m_name);
 }
 
 std::string SPUThread::dump() const
@@ -390,7 +390,7 @@ void SPUThread::cpu_task()
 		(fmt::throw_exception<std::logic_error>("Invalid SPU decoder"), nullptr));
 
 	// LS pointer
-	const uptr base = (uptr)(vm::base(offset));
+	const uptr base = offset;
 	const auto bswap4 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
 
 	v128 _op;
@@ -464,7 +464,7 @@ void SPUThread::cpu_task()
 SPUThread::~SPUThread()
 {
 	// Deallocate Local Storage
-	vm::dealloc_verbose_nothrow(offset);
+	vm::dealloc_verbose_nothrow(vm_offset);
 }
 
 SPUThread::SPUThread(const std::string& name)
@@ -508,7 +508,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 	u32 eal = args.eal;
 	u32 lsa = args.lsa & 0x3ffff;
 
-	if (eal >= SYS_SPU_THREAD_BASE_LOW && offset < RAW_SPU_BASE_ADDR) // SPU Thread Group MMIO (LS and SNR)
+	if (eal >= SYS_SPU_THREAD_BASE_LOW && !isRawSPU()) // SPU Thread Group MMIO (LS and SNR)
 	{
 		const u32 index = (eal - SYS_SPU_THREAD_BASE_LOW) / SYS_SPU_THREAD_OFFSET; // thread number in group
 		const u32 offset = (eal - SYS_SPU_THREAD_BASE_LOW) % SYS_SPU_THREAD_OFFSET; // LS offset or MMIO register
@@ -519,7 +519,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 
 			if (offset + args.size - 1 < 0x40000) // LS access
 			{
-				eal = spu.offset + offset; // redirect access
+				eal = vm_offset + offset; // redirect access
 			}
 			else if (!is_get && args.size == 4 && (offset == SYS_SPU_THREAD_SNR1 || offset == SYS_SPU_THREAD_SNR2))
 			{
@@ -540,7 +540,7 @@ void SPUThread::do_dma_transfer(const spu_mfc_cmd& args, bool from_mfc)
 	if (args.cmd & (MFC_BARRIER_MASK | MFC_FENCE_MASK)) _mm_mfence();
 
 	void* dst = vm::base(eal);
-	void* src = vm::base(offset + lsa);
+	void* src = (void*)(offset + lsa);
 
 	if (is_get)
 	{
@@ -1294,7 +1294,7 @@ bool SPUThread::set_ch_value(u32 ch, u32 value)
 
 	case SPU_WrOutIntrMbox:
 	{
-		if (offset >= RAW_SPU_BASE_ADDR)
+		if (isRawSPU())
 		{
 			while (!ch_out_intr_mbox.try_push(value))
 			{
@@ -1608,7 +1608,7 @@ bool SPUThread::stop_and_signal(u32 code)
 {
 	LOG_TRACE(SPU, "stop_and_signal(code=0x%x)", code);
 
-	if (offset >= RAW_SPU_BASE_ADDR)
+	if (isRawSPU())
 	{
 		status.atomic_op([code](u32& status)
 		{
@@ -1894,7 +1894,7 @@ void SPUThread::halt()
 {
 	LOG_TRACE(SPU, "halt()");
 
-	if (offset >= RAW_SPU_BASE_ADDR)
+	if (isRawSPU())
 	{
 		status.atomic_op([](u32& status)
 		{
