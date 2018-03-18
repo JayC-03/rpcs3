@@ -967,7 +967,6 @@ void SPUThread::process_mfc_cmd()
 
 					spu_mfc_cmd transfer;
 					transfer.eal = addr;
-					transfer.eah = 0;
 					transfer.lsa = ch_mfc_cmd.lsa | (addr & 0xf);
 					transfer.tag = ch_mfc_cmd.tag;
 					transfer.cmd = MFC(ch_mfc_cmd.cmd & ~MFC_LIST_MASK);
@@ -1513,7 +1512,7 @@ bool SPUThread::set_ch_value(u32 ch, u32 value)
 
 	case MFC_EAH:
 	{
-		ch_mfc_cmd.eah = value;
+		//ch_mfc_cmd.eah = value;
 		return true;
 	}
 
@@ -1538,9 +1537,9 @@ bool SPUThread::set_ch_value(u32 ch, u32 value)
 	case MFC_Cmd:
 	{
 		ch_mfc_cmd.cmd = MFC(value & 0xff);
-		auto cmd = ch_mfc_cmd; // save and restore previous command arguments
+		const u16 size = ch_mfc_cmd.size; // save and restore previous command size
 		process_mfc_cmd();
-		ch_mfc_cmd = cmd;
+		ch_mfc_cmd.size = size;
 		return true;
 	}
 

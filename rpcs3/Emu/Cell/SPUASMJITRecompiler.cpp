@@ -1292,9 +1292,6 @@ void spu_recompiler::WRCH(spu_opcode_t op)
 	}
 	case MFC_EAH:
 	{
-		c->mov(*addr, SPU_OFF_32(gpr, op.rt, &v128::_u32, 3));
-		c->mov(SPU_OFF_32(ch_mfc_cmd, &spu_mfc_cmd::eah), *addr);
-		c->unuse(*addr);
 		return;
 	}
 	case MFC_EAL:

@@ -206,7 +206,6 @@ void mfc_thread::cpu_task()
 								{
 									spu_mfc_cmd transfer;
 									transfer.eal = addr;
-									transfer.eah = 0;
 									transfer.lsa = cmd.lsa | (addr & 0xf);
 									transfer.tag = cmd.tag;
 									transfer.cmd = MFC(cmd.cmd & ~MFC_LIST_MASK);
