@@ -28,21 +28,14 @@ rsx::index_array_type rsx::to_index_array_type(u8 in)
 
 rsx::primitive_type rsx::to_primitive_type(u8 in)
 {
-	switch (in)
+	if (in > (u8)primitive_type::enum_max)
 	{
-	case 0: return rsx::primitive_type::invalid;
-	case 1: return rsx::primitive_type::points;
-	case 2: return rsx::primitive_type::lines;
-	case 3: return rsx::primitive_type::line_loop;
-	case 4: return rsx::primitive_type::line_strip;
-	case 5: return rsx::primitive_type::triangles;
-	case 6: return rsx::primitive_type::triangle_strip;
-	case 7: return rsx::primitive_type::triangle_fan;
-	case 8: return rsx::primitive_type::quads;
-	case 9: return rsx::primitive_type::quad_strip;
-	case 10: return rsx::primitive_type::polygon;
+		fmt::throw_exception("Unknown primitive type %d" HERE, in);
 	}
-	fmt::throw_exception("Unknown primitive type %d" HERE, in);
+	else
+	{
+		return (primitive_type)in;
+	}
 }
 
 enum
