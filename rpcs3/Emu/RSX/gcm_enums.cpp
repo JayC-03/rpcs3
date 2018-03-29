@@ -3,17 +3,14 @@
 
 rsx::vertex_base_type rsx::to_vertex_base_type(u8 in)
 {
-	switch (in)
+	if (in > (u8)vertex_base_type::enum_max) 
 	{
-	case 1: return rsx::vertex_base_type::s1;
-	case 2: return rsx::vertex_base_type::f;
-	case 3: return rsx::vertex_base_type::sf;
-	case 4: return rsx::vertex_base_type::ub;
-	case 5: return rsx::vertex_base_type::s32k;
-	case 6: return rsx::vertex_base_type::cmp;
-	case 7: return rsx::vertex_base_type::ub256;
+		fmt::throw_exception("Unknown primitive type %d" HERE, in); 
 	}
-	fmt::throw_exception("Unknown vertex base type %d" HERE, in);
+	else
+	{
+		return (vertex_base_type)in; 
+	}
 }
 
 rsx::index_array_type rsx::to_index_array_type(u8 in)
@@ -230,16 +227,14 @@ namespace rsx
 
 	std::string to_string(surface_target target)
 	{
-		switch (target)
+		if (in > (u8)surface_target::enum_max) 
 		{
-		case surface_target::none: return "none";
-		case surface_target::surface_a: return "surface A";
-		case surface_target::surface_b: return "surface B";
-		case surface_target::surfaces_a_b: return "surfaces A and B";
-		case surface_target::surfaces_a_b_c: return "surfaces A, B and C";
-		case surface_target::surfaces_a_b_c_d: return "surfaces A,B, C and D";
+			fmt::throw_exception("Unexpected enum found" HERE);
 		}
-		fmt::throw_exception("Unexpected enum found" HERE);
+		else
+		{
+			return (surface_target)in;
+		}
 	}
 
 	std::string to_string(primitive_type draw_mode)
