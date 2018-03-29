@@ -281,7 +281,7 @@ spu_function_t* SPUDatabase::analyse(const be_t<u32>* ls, u32 entry, u32 max_lim
 	// Find more function calls (second pass, questionable)
 	for (u32 pos = 0; pos < 0x40000; pos += 4)
 	{
-		const spu_opcode_t op{ ls[pos / 4] };
+		spu_opcode_t op{ ls[pos / 4] };
 
 		const auto type = s_spu_itype.decode(op.opcode);
 

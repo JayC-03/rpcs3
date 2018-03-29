@@ -21,7 +21,7 @@ void spu_recompiler_base::enter(SPUThread& spu)
 	}
 
 	// Get SPU LS pointer
-	const auto _ls = vm::_ptr<u32>(spu.offset);
+	const auto _ls = spu._ptr<u32>(0);
 
 	// Search if cached data matches
 	auto func = spu.compiled_cache[spu.pc / 4];

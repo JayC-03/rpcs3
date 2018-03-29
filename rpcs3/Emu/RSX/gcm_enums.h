@@ -37,6 +37,7 @@ namespace rsx
 		quads,
 		quad_strip,
 		polygon, // convex polygon
+		enum_max = polygon,
 	};
 
 	primitive_type to_primitive_type(u8 in);

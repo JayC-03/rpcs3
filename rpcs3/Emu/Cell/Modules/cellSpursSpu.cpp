@@ -91,7 +91,7 @@ void cellSpursModulePutTrace(CellSpursTracePacket* packet, u32 dmaTagId)
 // Check for execution right requests
 u32 cellSpursModulePollStatus(SPUThread& spu, u32* status)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 
 	spu.gpr[3]._u32[3] = 1;
 	if (ctxt->spurs->flags1 & SF1_32_WORKLOADS)
@@ -116,7 +116,7 @@ u32 cellSpursModulePollStatus(SPUThread& spu, u32* status)
 // Exit current workload
 void cellSpursModuleExit(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 	spu.pc = ctxt->exitToKernelAddr;
 	throw SpursModuleExit();
 }
@@ -256,7 +256,7 @@ s32 sys_spu_thread_switch_system_module(SPUThread& spu, u32 status)
 // Select a workload to run
 bool spursKernel1SelectWorkload(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 
 	// The first and only argument to this function is a boolean that is set to false if the function
 	// is called by the SPURS kernel and set to true if called by cellSpursModulePollStatus.
@@ -428,7 +428,7 @@ bool spursKernel1SelectWorkload(SPUThread& spu)
 			}
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x100), spurs, 128);
+		std::memcpy((void*)(spu.offset + 0x100), spurs, 128);
 	}//);
 
 	u64 result = (u64)wklSelectedId << 32;
@@ -440,7 +440,7 @@ bool spursKernel1SelectWorkload(SPUThread& spu)
 // Select a workload to run
 bool spursKernel2SelectWorkload(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 
 	// The first and only argument to this function is a boolean that is set to false if the function
 	// is called by the SPURS kernel and set to true if called by cellSpursModulePollStatus.
@@ -601,7 +601,7 @@ bool spursKernel2SelectWorkload(SPUThread& spu)
 			}
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x100), spurs, 128);
+		std::memcpy((void*)(spu.offset + 0x100), spurs, 128);
 	}//);
 
 	u64 result = (u64)wklSelectedId << 32;
@@ -613,7 +613,7 @@ bool spursKernel2SelectWorkload(SPUThread& spu)
 // SPURS kernel dispatch workload
 void spursKernelDispatchWorkload(SPUThread& spu, u64 widAndPollStatus)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 	auto isKernel2 = ctxt->spurs->flags1 & SF1_32_WORKLOADS ? true : false;
 
 	auto pollStatus = (u32)widAndPollStatus;
@@ -624,10 +624,10 @@ void spursKernelDispatchWorkload(SPUThread& spu, u64 widAndPollStatus)
 		wid < CELL_SPURS_MAX_WORKLOAD2 && isKernel2 ? &ctxt->spurs->wklInfo2[wid & 0xf] :
 		&ctxt->spurs->wklInfoSysSrv;
 
-	std::memcpy(vm::base(spu.offset + 0x3FFE0), wklInfoOffset, 0x20);
+	std::memcpy((void*)(spu.offset + 0x3FFE0), wklInfoOffset, 0x20);
 
 	// Load the workload to LS
-	auto wklInfo = vm::_ptr<CellSpurs::WorkloadInfo>(spu.offset + 0x3FFE0);
+	auto wklInfo = spu._ptr<CellSpurs::WorkloadInfo>(0x3FFE0);
 	if (ctxt->wklCurrentAddr != wklInfo->addr)
 	{
 		switch (wklInfo->addr.addr())
@@ -639,7 +639,7 @@ void spursKernelDispatchWorkload(SPUThread& spu, u64 widAndPollStatus)
 			//spu.RegisterHleFunction(0xA00, spursTasksetEntry);
 			break;
 		default:
-			std::memcpy(vm::base(spu.offset + 0xA00), wklInfo->addr.get_ptr(), wklInfo->size);
+			std::memcpy((void*)(spu.offset + 0xA00), wklInfo->addr.get_ptr(), wklInfo->size);
 			break;
 		}
 
@@ -665,7 +665,7 @@ void spursKernelDispatchWorkload(SPUThread& spu, u64 widAndPollStatus)
 // SPURS kernel workload exit
 bool spursKernelWorkloadExit(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 	auto isKernel2 = ctxt->spurs->flags1 & SF1_32_WORKLOADS ? true : false;
 
 	// Select next workload to run
@@ -688,7 +688,7 @@ bool spursKernelEntry(SPUThread& spu)
 {
 	thread_ctrl::eternalize();
 
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 	memset(ctxt, 0, sizeof(SpursKernelContext));
 
 	// Save arguments
@@ -738,7 +738,7 @@ bool spursKernelEntry(SPUThread& spu)
 // Entry point of the system service
 bool spursSysServiceEntry(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + spu.gpr[3]._u32[3]);
+	auto ctxt = spu._ptr<SpursKernelContext>(spu.gpr[3]._u32[3]);
 	auto arg = spu.gpr[4]._u64[1];
 	auto pollStatus = spu.gpr[5]._u32[3];
 
@@ -771,8 +771,8 @@ void spursSysServiceIdleHandler(SPUThread& spu, SpursKernelContext* ctxt)
 
 	while (true)
 	{
-		//vm::reservation_acquire(vm::base(spu.offset + 0x100), vm::cast(ctxt->spurs.addr(), HERE), 128);
-		auto spurs = vm::_ptr<CellSpurs>(spu.offset + 0x100);
+		//vm::reservation_acquire((void*)(spu.offset + 0x100), vm::cast(ctxt->spurs.addr(), HERE), 128);
+		auto spurs = spu._ptr<CellSpurs>(0x100);
 
 		// Find the number of SPUs that are idling in this SPURS instance
 		u32 nIdlingSpus = 0;
@@ -860,7 +860,7 @@ void spursSysServiceIdleHandler(SPUThread& spu, SpursKernelContext* ctxt)
 			continue;
 		}
 
-		//if (vm::reservation_update(vm::cast(ctxt->spurs.addr(), HERE), vm::base(spu.offset + 0x100), 128) && (shouldExit || foundReadyWorkload))
+		//if (vm::reservation_update(vm::cast(ctxt->spurs.addr(), HERE), (void*)(spu.offset + 0x100), 128) && (shouldExit || foundReadyWorkload))
 		{
 			break;
 		}
@@ -875,7 +875,7 @@ void spursSysServiceIdleHandler(SPUThread& spu, SpursKernelContext* ctxt)
 // Main function for the system service
 void spursSysServiceMain(SPUThread& spu, u32 pollStatus)
 {
-	auto ctxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursKernelContext>(0x100);
 
 	if (!ctxt->spurs.aligned())
 	{
@@ -888,7 +888,7 @@ void spursSysServiceMain(SPUThread& spu, u32 pollStatus)
 	{
 		ctxt->sysSrvInitialised = 1;
 
-		//vm::reservation_acquire(vm::base(spu.offset + 0x100), vm::cast(ctxt->spurs.addr(), HERE), 128);
+		//vm::reservation_acquire((void*)(spu.offset + 0x100), vm::cast(ctxt->spurs.addr(), HERE), 128);
 
 		//vm::reservation_op(ctxt->spurs.ptr(&CellSpurs::wklState1).addr(), 128, [&]()
 		{
@@ -903,7 +903,7 @@ void spursSysServiceMain(SPUThread& spu, u32 pollStatus)
 
 			spurs->sysSrvOnSpu |= 1 << ctxt->spuNum;
 
-			std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+			std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 		}//);
 
 		ctxt->traceBuffer = 0;
@@ -1008,7 +1008,7 @@ void spursSysServiceProcessRequests(SPUThread& spu, SpursKernelContext* ctxt)
 			updateTrace = true;
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+		std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 	}//);
 
 	// Process update workload message
@@ -1033,11 +1033,11 @@ void spursSysServiceProcessRequests(SPUThread& spu, SpursKernelContext* ctxt)
 // Activate a workload
 void spursSysServiceActivateWorkload(SPUThread& spu, SpursKernelContext* ctxt)
 {
-	auto spurs = vm::_ptr<CellSpurs>(spu.offset + 0x100);
-	std::memcpy(vm::base(spu.offset + 0x30000), ctxt->spurs->wklInfo1, 0x200);
+	auto spurs = spu._ptr<CellSpurs>(0x100);
+	std::memcpy((void*)(spu.offset + 0x30000), ctxt->spurs->wklInfo1, 0x200);
 	if (spurs->flags1 & SF1_32_WORKLOADS)
 	{
-		std::memcpy(vm::base(spu.offset + 0x30200), ctxt->spurs->wklInfo2, 0x200);
+		std::memcpy((void*)(spu.offset + 0x30200), ctxt->spurs->wklInfo2, 0x200);
 	}
 
 	u32 wklShutdownBitSet = 0;
@@ -1045,7 +1045,7 @@ void spursSysServiceActivateWorkload(SPUThread& spu, SpursKernelContext* ctxt)
 	ctxt->wklRunnable2 = 0;
 	for (u32 i = 0; i < CELL_SPURS_MAX_WORKLOAD; i++)
 	{
-		auto wklInfo1 = vm::_ptr<CellSpurs::WorkloadInfo>(spu.offset + 0x30000);
+		auto wklInfo1 = spu._ptr<CellSpurs::WorkloadInfo>(0x30000);
 
 		// Copy the priority of the workload for this SPU and its unique id to the LS
 		ctxt->priority[i] = wklInfo1[i].priority[ctxt->spuNum] == 0 ? 0 : 0x10 - wklInfo1[i].priority[ctxt->spuNum];
@@ -1053,7 +1053,7 @@ void spursSysServiceActivateWorkload(SPUThread& spu, SpursKernelContext* ctxt)
 
 		if (spurs->flags1 & SF1_32_WORKLOADS)
 		{
-			auto wklInfo2 = vm::_ptr<CellSpurs::WorkloadInfo>(spu.offset + 0x30200);
+			auto wklInfo2 = spu._ptr<CellSpurs::WorkloadInfo>(0x30200);
 
 			// Copy the priority of the workload for this SPU to the LS
 			if (wklInfo2[i].priority[ctxt->spuNum])
@@ -1119,7 +1119,7 @@ void spursSysServiceActivateWorkload(SPUThread& spu, SpursKernelContext* ctxt)
 			}
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+		std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 	}//);
 
 	if (wklShutdownBitSet)
@@ -1162,7 +1162,7 @@ void spursSysServiceUpdateShutdownCompletionEvents(SPUThread& spu, SpursKernelCo
 			}
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+		std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 	}//);
 
 	if (wklNotifyBitSet)
@@ -1210,14 +1210,14 @@ void spursSysServiceTraceUpdate(SPUThread& spu, SpursKernelContext* ctxt, u32 ar
 			notify = true;
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+		std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 	}//);
 
 	// Get trace parameters from CellSpurs and store them in the LS
 	if (((sysSrvMsgUpdateTrace & (1 << ctxt->spuNum)) != 0) || (arg3 != 0))
 	{
-		//vm::reservation_acquire(vm::base(spu.offset + 0x80), ctxt->spurs.ptr(&CellSpurs::traceBuffer).addr(), 128);
-		auto spurs = vm::_ptr<CellSpurs>(spu.offset + 0x80 - offset32(&CellSpurs::traceBuffer));
+		//vm::reservation_acquire((void*)(spu.offset + 0x80), ctxt->spurs.ptr(&CellSpurs::traceBuffer).addr(), 128);
+		auto spurs = spu._ptr<CellSpurs>(0x80 - offset32(&CellSpurs::traceBuffer));
 
 		if (ctxt->traceMsgCount != 0xFF || spurs->traceBuffer.addr() == 0)
 		{
@@ -1225,8 +1225,8 @@ void spursSysServiceTraceUpdate(SPUThread& spu, SpursKernelContext* ctxt, u32 ar
 		}
 		else
 		{
-			std::memcpy(vm::base(spu.offset + 0x2C00), vm::base(spurs->traceBuffer.addr() & -0x4), 0x80);
-			auto traceBuffer = vm::_ptr<CellSpursTraceInfo>(spu.offset + 0x2C00);
+			std::memcpy((void*)(spu.offset + 0x2C00), vm::base(spurs->traceBuffer.addr() & -0x4), 0x80);
+			auto traceBuffer = spu._ptr<CellSpursTraceInfo>(0x2C00);
 			ctxt->traceMsgCount = traceBuffer->count[ctxt->spuNum];
 		}
 
@@ -1240,7 +1240,7 @@ void spursSysServiceTraceUpdate(SPUThread& spu, SpursKernelContext* ctxt, u32 ar
 
 	if (notify)
 	{
-		auto spurs = vm::_ptr<CellSpurs>(spu.offset + 0x2D80 - offset32(&CellSpurs::wklState1));
+		auto spurs = spu._ptr<CellSpurs>(0x2D80 - offset32(&CellSpurs::wklState1));
 		sys_spu_thread_send_event(spu, spurs->spuPort, 2, 0);
 	}
 }
@@ -1265,7 +1265,7 @@ void spursSysServiceCleanupAfterSystemWorkload(SPUThread& spu, SpursKernelContex
 		wklId = spurs->sysSrvPreemptWklId[ctxt->spuNum];
 		spurs->sysSrvPreemptWklId[ctxt->spuNum] = 0xFF;
 
-		std::memcpy(vm::base(spu.offset + 0x2D80), spurs->wklState1, 128);
+		std::memcpy((void*)(spu.offset + 0x2D80), spurs->wklState1, 128);
 	}//);
 
 	if (do_return) return;
@@ -1287,7 +1287,7 @@ void spursSysServiceCleanupAfterSystemWorkload(SPUThread& spu, SpursKernelContex
 			spurs->wklIdleSpuCountOrReadyCount2[wklId & 0x0F].raw() -= 1;
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x100), spurs, 128);
+		std::memcpy((void*)(spu.offset + 0x100), spurs, 128);
 	}//);
 
 	// Set the current workload id to the id of the pre-empted workload since cellSpursModulePutTrace
@@ -1324,8 +1324,8 @@ enum SpursTasksetRequest
 // Taskset PM entry point
 bool spursTasksetEntry(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto kernelCtxt = vm::_ptr<SpursKernelContext>(spu.offset + spu.gpr[3]._u32[3]);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto kernelCtxt = spu._ptr<SpursKernelContext>(spu.gpr[3]._u32[3]);
 
 	auto arg = spu.gpr[4]._u64[1];
 	auto pollStatus = spu.gpr[5]._u32[3];
@@ -1363,7 +1363,7 @@ bool spursTasksetEntry(SPUThread& spu)
 // Entry point into the Taskset PM for task syscalls
 bool spursTasksetSyscallEntry(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
 
 	try
 	{
@@ -1394,7 +1394,7 @@ bool spursTasksetSyscallEntry(SPUThread& spu)
 // Resume a task
 void spursTasksetResumeTask(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
 
 	// Restore task context
 	spu.gpr[0] = ctxt->savedContextLr;
@@ -1410,8 +1410,8 @@ void spursTasksetResumeTask(SPUThread& spu)
 // Start a task
 void spursTasksetStartTask(SPUThread& spu, CellSpursTaskArgument& taskArgs)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto taskset = vm::_ptr<CellSpursTaskset>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto taskset = spu._ptr<CellSpursTaskset>(0x2700);
 
 	spu.gpr[2].clear();
 	spu.gpr[3] = v128::from64r(taskArgs._u64[0], taskArgs._u64[1]);
@@ -1428,8 +1428,8 @@ void spursTasksetStartTask(SPUThread& spu, CellSpursTaskArgument& taskArgs)
 // Process a request and update the state of the taskset
 s32 spursTasksetProcessRequest(SPUThread& spu, s32 request, u32* taskId, u32* isWaiting)
 {
-	auto kernelCtxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
+	auto kernelCtxt = spu._ptr<SpursKernelContext>(0x100);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
 
 	s32 rc = CELL_OK;
 	s32 numNewlyReadyTasks;
@@ -1591,7 +1591,7 @@ s32 spursTasksetProcessRequest(SPUThread& spu, s32 request, u32* taskId, u32* is
 		taskset->signalled = signalled;
 		taskset->ready = ready;
 
-		std::memcpy(vm::base(spu.offset + 0x2700), taskset, 128);
+		std::memcpy((void*)(spu.offset + 0x2700), taskset, 128);
 	}//);
 
 	// Increment the ready count of the workload by the number of tasks that have become ready
@@ -1612,7 +1612,7 @@ s32 spursTasksetProcessRequest(SPUThread& spu, s32 request, u32* taskId, u32* is
 			spurs->wklIdleSpuCountOrReadyCount2[kernelCtxt->wklCurrentId & 0x0F] = readyCount;
 		}
 
-		std::memcpy(vm::base(spu.offset + 0x100), spurs, 128);
+		std::memcpy((void*)(spu.offset + 0x100), spurs, 128);
 	}//);
 
 	return rc;
@@ -1644,7 +1644,7 @@ bool spursTasksetPollStatus(SPUThread& spu)
 // Exit the Taskset PM
 void spursTasksetExit(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
 
 	// Trace - STOP
 	CellSpursTracePacket pkt;
@@ -1666,9 +1666,9 @@ void spursTasksetExit(SPUThread& spu)
 // Invoked when a task exits
 void spursTasksetOnTaskExit(SPUThread& spu, u64 addr, u32 taskId, s32 exitCode, u64 args)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
 
-	std::memcpy(vm::base(spu.offset + 0x10000), vm::base(addr & -0x80), (addr & 0x7F) << 11);
+	std::memcpy((void*)(spu.offset + 0x10000), vm::base(addr & -0x80), (addr & 0x7F) << 11);
 
 	spu.gpr[3]._u64[1] = ctxt->taskset.addr();
 	spu.gpr[4]._u32[3] = taskId;
@@ -1680,8 +1680,8 @@ void spursTasksetOnTaskExit(SPUThread& spu, u64 addr, u32 taskId, s32 exitCode, 
 // Save the context of a task
 s32 spursTasketSaveTaskContext(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto taskInfo = vm::_ptr<CellSpursTaskset::TaskInfo>(spu.offset + 0x2780);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto taskInfo = spu._ptr<CellSpursTaskset::TaskInfo>(0x2780);
 
 	//spursDmaWaitForCompletion(spu, 0xFFFFFFFF);
 
@@ -1725,7 +1725,7 @@ s32 spursTasketSaveTaskContext(SPUThread& spu)
 
 	// Store the processor context
 	const u32 contextSaveStorage = vm::cast(taskInfo->context_save_storage_and_alloc_ls_blocks & -0x80, HERE);
-	std::memcpy(vm::base(contextSaveStorage), vm::base(spu.offset + 0x2C80), 0x380);
+	std::memcpy(vm::base(contextSaveStorage), (void*)(spu.offset + 0x2C80), 0x380);
 
 	// Save LS context
 	for (auto i = 6; i < 128; i++)
@@ -1733,7 +1733,7 @@ s32 spursTasketSaveTaskContext(SPUThread& spu)
 		if (ls_pattern._bit[i])
 		{
 			// TODO: Combine DMA requests for consecutive blocks into a single request
-			std::memcpy(vm::base(contextSaveStorage + 0x400 + ((i - 6) << 11)), vm::base(spu.offset + CELL_SPURS_TASK_TOP + ((i - 6) << 11)), 0x800);
+			std::memcpy(vm::base(contextSaveStorage + 0x400 + ((i - 6) << 11)), (void*)(spu.offset + CELL_SPURS_TASK_TOP + ((i - 6) << 11)), 0x800);
 		}
 	}
 
@@ -1744,8 +1744,8 @@ s32 spursTasketSaveTaskContext(SPUThread& spu)
 // Taskset dispatcher
 void spursTasksetDispatch(SPUThread& spu)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto taskset = vm::_ptr<CellSpursTaskset>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto taskset = spu._ptr<CellSpursTaskset>(0x2700);
 
 	u32 taskId;
 	u32 isWaiting;
@@ -1759,8 +1759,8 @@ void spursTasksetDispatch(SPUThread& spu)
 	ctxt->taskId = taskId;
 
 	// DMA in the task info for the selected task
-	std::memcpy(vm::base(spu.offset + 0x2780), &ctxt->taskset->task_info[taskId], sizeof(CellSpursTaskset::TaskInfo));
-	auto taskInfo = vm::_ptr<CellSpursTaskset::TaskInfo>(spu.offset + 0x2780);
+	std::memcpy((void*)(spu.offset + 0x2780), &ctxt->taskset->task_info[taskId], sizeof(CellSpursTaskset::TaskInfo));
+	auto taskInfo = spu._ptr<CellSpursTaskset::TaskInfo>(0x2780);
 	auto elfAddr = taskInfo->elf.addr().value();
 	taskInfo->elf.set(taskInfo->elf.addr() & 0xFFFFFFFFFFFFFFF8);
 
@@ -1775,7 +1775,7 @@ void spursTasksetDispatch(SPUThread& spu)
 	if (isWaiting == 0)
 	{
 		// If we reach here it means that the task is being started and not being resumed
-		std::memset(vm::base(spu.offset + CELL_SPURS_TASK_TOP), 0, CELL_SPURS_TASK_BOTTOM - CELL_SPURS_TASK_TOP);
+		std::memset((void*)(spu.offset + CELL_SPURS_TASK_TOP), 0, CELL_SPURS_TASK_BOTTOM - CELL_SPURS_TASK_TOP);
 		ctxt->guidAddr = CELL_SPURS_TASK_TOP;
 
 		u32 entryPoint;
@@ -1797,7 +1797,7 @@ void spursTasksetDispatch(SPUThread& spu)
 
 		if ((elfAddr & 5) == 1)
 		{
-			std::memcpy(vm::base(spu.offset + 0x2FC0), &((CellSpursTaskset2*)(ctxt->taskset.get_ptr()))->task_exit_code[taskId], 0x10);
+			std::memcpy((void*)(spu.offset + 0x2FC0), &((CellSpursTaskset2*)(ctxt->taskset.get_ptr()))->task_exit_code[taskId], 0x10);
 		}
 
 		// Trace - GUID
@@ -1819,7 +1819,7 @@ void spursTasksetDispatch(SPUThread& spu)
 	{
 		if (taskset->enable_clear_ls)
 		{
-			std::memset(vm::base(spu.offset + CELL_SPURS_TASK_TOP), 0, CELL_SPURS_TASK_BOTTOM - CELL_SPURS_TASK_TOP);
+			std::memset((void*)(spu.offset + CELL_SPURS_TASK_TOP), 0, CELL_SPURS_TASK_BOTTOM - CELL_SPURS_TASK_TOP);
 		}
 
 		// If the entire LS is saved then there is no need to load the ELF as it will be be saved in the context save area as well
@@ -1837,13 +1837,13 @@ void spursTasksetDispatch(SPUThread& spu)
 
 		// Load saved context from main memory to LS
 		const u32 contextSaveStorage = vm::cast(taskInfo->context_save_storage_and_alloc_ls_blocks & -0x80, HERE);
-		std::memcpy(vm::base(spu.offset + 0x2C80), vm::base(contextSaveStorage), 0x380);
+		std::memcpy((void*)(spu.offset + 0x2C80), vm::base(contextSaveStorage), 0x380);
 		for (auto i = 6; i < 128; i++)
 		{
 			if (ls_pattern._bit[i])
 			{
 				// TODO: Combine DMA requests for consecutive blocks into a single request
-				std::memcpy(vm::base(spu.offset + CELL_SPURS_TASK_TOP + ((i - 6) << 11)), vm::base(contextSaveStorage + 0x400 + ((i - 6) << 11)), 0x800);
+				std::memcpy((void*)(spu.offset + CELL_SPURS_TASK_TOP + ((i - 6) << 11)), vm::base(contextSaveStorage + 0x400 + ((i - 6) << 11)), 0x800);
 			}
 		}
 
@@ -1875,8 +1875,8 @@ void spursTasksetDispatch(SPUThread& spu)
 // Process a syscall request
 s32 spursTasksetProcessSyscall(SPUThread& spu, u32 syscallNum, u32 args)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto taskset = vm::_ptr<CellSpursTaskset>(spu.offset + 0x2700);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto taskset = spu._ptr<CellSpursTaskset>(0x2700);
 
 	// If the 0x10 bit is set in syscallNum then its the 2nd version of the
 	// syscall (e.g. cellSpursYield2 instead of cellSpursYield) and so don't wait
@@ -1967,7 +1967,7 @@ s32 spursTasksetProcessSyscall(SPUThread& spu, u32 syscallNum, u32 args)
 		cellSpursModulePutTrace(&pkt, ctxt->dmaTagId);
 
 		// Clear the GUID of the task
-		std::memset(vm::base(spu.offset + ctxt->guidAddr), 0, 0x10);
+		std::memset((void*)(spu.offset + ctxt->guidAddr), 0, 0x10);
 
 		if (spursTasksetPollStatus(spu))
 		{
@@ -1985,8 +1985,8 @@ s32 spursTasksetProcessSyscall(SPUThread& spu, u32 syscallNum, u32 args)
 // Initialise the Taskset PM
 void spursTasksetInit(SPUThread& spu, u32 pollStatus)
 {
-	auto ctxt = vm::_ptr<SpursTasksetContext>(spu.offset + 0x2700);
-	auto kernelCtxt = vm::_ptr<SpursKernelContext>(spu.offset + 0x100);
+	auto ctxt = spu._ptr<SpursTasksetContext>(0x2700);
+	auto kernelCtxt = spu._ptr<SpursKernelContext>(0x100);
 
 	kernelCtxt->moduleId[0] = 'T';
 	kernelCtxt->moduleId[1] = 'K';
@@ -2051,7 +2051,7 @@ s32 spursTasksetLoadElf(SPUThread& spu, u32* entryPoint, u32* lowestLoadAddr, u6
 		{
 			if (skipWriteableSegments == false || (prog.p_flags & 2) == 0)
 			{
-				std::memcpy(vm::base(spu.offset + prog.p_vaddr), prog.bin.data(), prog.p_filesz);
+				std::memcpy((void*)(spu.offset + prog.p_vaddr), prog.bin.data(), prog.p_filesz);
 			}
 		}
 	}

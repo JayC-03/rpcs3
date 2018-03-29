@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "Memory.h"
 #include "Emu/System.h"
 #include "Utilities/mutex.h"
@@ -13,14 +13,15 @@
 
 namespace vm
 {
-	static u8* memory_reserve_4GiB(std::uintptr_t _addr = 0)
+	static u8* memory_reserve_4GiB(std::uintptr_t _addr)
 	{
-		for (u64 addr = _addr + 0x100000000;; addr += 0x100000000)
+		while (true)
 		{
-			if (auto ptr = utils::memory_reserve(0x100000000, (void*)addr))
+			if (auto ptr = utils::memory_reserve(0x100000000, (void*)_addr))
 			{
 				return static_cast<u8*>(ptr);
 			}
+			_addr += 0x100000000;
 		}
 
 		// TODO: a condition to break loop
@@ -28,7 +29,7 @@ namespace vm
 	}
 
 	// Emulated virtual memory
-	u8* const g_base_addr = memory_reserve_4GiB(0);
+	u8* const g_base_addr = memory_reserve_4GiB(0x100000000);
 
 	// Auxiliary virtual memory for executable areas
 	u8* const g_exec_addr = memory_reserve_4GiB((std::uintptr_t)g_base_addr);

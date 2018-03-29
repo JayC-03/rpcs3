@@ -276,7 +276,7 @@ spu_recompiler::XmmLink spu_recompiler::XmmAlloc() // get empty xmm register
 	fmt::throw_exception("Out of Xmm Vars" HERE);
 }
 
-spu_recompiler::XmmLink spu_recompiler::XmmGet(s8 reg, XmmType type) // get xmm register with specific SPU reg
+spu_recompiler::XmmLink spu_recompiler::XmmGet(const s8 reg, const XmmType type) // get xmm register with specific SPU reg
 {
 	XmmLink result = XmmAlloc();
 
@@ -285,7 +285,7 @@ spu_recompiler::XmmLink spu_recompiler::XmmGet(s8 reg, XmmType type) // get xmm 
 	case XmmType::Int: c->movdqa(result, SPU_OFF_128(gpr, reg)); break;
 	case XmmType::Float: c->movaps(result, SPU_OFF_128(gpr, reg)); break;
 	case XmmType::Double: c->movapd(result, SPU_OFF_128(gpr, reg)); break;
-	default: fmt::throw_exception("Invalid XmmType" HERE);
+	default: ASSUME(0);
 	}
 
 	return result;
@@ -1292,9 +1292,6 @@ void spu_recompiler::WRCH(spu_opcode_t op)
 	}
 	case MFC_EAH:
 	{
-		c->mov(*addr, SPU_OFF_32(gpr, op.rt, &v128::_u32, 3));
-		c->mov(SPU_OFF_32(ch_mfc_cmd, &spu_mfc_cmd::eah), *addr);
-		c->unuse(*addr);
 		return;
 	}
 	case MFC_EAL:

@@ -26,7 +26,7 @@
 #define NEVER_INLINE __declspec(noinline)
 #define FORCE_INLINE __forceinline
 #else
-#define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
+#define ASSUME(cond) {if (!(cond)) __builtin_unreachable();}
 #define LIKELY(cond) __builtin_expect(!!(cond), 1)
 #define UNLIKELY(cond) __builtin_expect(!!(cond), 0)
 #define SAFE_BUFFERS

@@ -30,7 +30,7 @@ void RawSPUThread::on_init(const std::shared_ptr<void>& _this)
 	{
 		// Install correct SPU index and LS address
 		const_cast<u32&>(index) = id;
-		const_cast<u32&>(offset) = verify(HERE, vm::falloc(RAW_SPU_BASE_ADDR + RAW_SPU_OFFSET * index, 0x40000));
+		const_cast<uptr&>(offset) = reinterpret_cast<uptr>(vm::falloc(RAW_SPU_BASE_ADDR + RAW_SPU_OFFSET * index, 0x40000) + vm::g_base_addr);
 
 		cpu_thread::on_init(_this);
 	}
@@ -43,9 +43,8 @@ RawSPUThread::RawSPUThread(const std::string& name)
 
 bool RawSPUThread::read_reg(const u32 addr, u32& value)
 {
-	const u32 offset = addr - RAW_SPU_BASE_ADDR - index * RAW_SPU_OFFSET - RAW_SPU_PROB_OFFSET;
-
-	switch (offset)
+	// Calculate MMIO offset
+	switch (addr - RAW_SPU_BASE_ADDR - index * RAW_SPU_OFFSET - RAW_SPU_PROB_OFFSET)
 	{
 	case MFC_CMDStatus_offs:
 	{
@@ -112,9 +111,7 @@ bool RawSPUThread::write_reg(const u32 addr, const u32 value)
 		}
 	};
 
-	const u32 offset = addr - RAW_SPU_BASE_ADDR - index * RAW_SPU_OFFSET - RAW_SPU_PROB_OFFSET;
-
-	switch (offset)
+	switch (addr - RAW_SPU_BASE_ADDR - index * RAW_SPU_OFFSET - RAW_SPU_PROB_OFFSET)
 	{
 	case MFC_LSA_offs:
 	{
@@ -129,7 +126,7 @@ bool RawSPUThread::write_reg(const u32 addr, const u32 value)
 
 	case MFC_EAH_offs:
 	{
-		g_tls_mfc[index].eah = value;
+		//g_tls_mfc[index].eah = value;
 		return true;
 	}
 
@@ -249,7 +246,7 @@ void spu_load_exec(const spu_exec_object& elf)
 	{
 		if (prog.p_type == 0x1 /* LOAD */ && prog.p_memsz)
 		{
-			std::memcpy(vm::base(spu->offset + prog.p_vaddr), prog.bin.data(), prog.p_filesz);
+			std::memcpy((void*)(spu->offset + prog.p_vaddr), prog.bin.data(), prog.p_filesz);
 		}
 	}
 
