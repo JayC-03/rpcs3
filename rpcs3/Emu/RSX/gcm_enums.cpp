@@ -3,14 +3,17 @@
 
 rsx::vertex_base_type rsx::to_vertex_base_type(u8 in)
 {
-	if (in > (u8)vertex_base_type::enum_max) 
+	switch (in)
 	{
-		fmt::throw_exception("Unknown primitive type %d" HERE, in); 
+	case 1: return rsx::vertex_base_type::s1;
+	case 2: return rsx::vertex_base_type::f;
+	case 3: return rsx::vertex_base_type::sf;
+	case 4: return rsx::vertex_base_type::ub;
+	case 5: return rsx::vertex_base_type::s32k;
+	case 6: return rsx::vertex_base_type::cmp;
+	case 7: return rsx::vertex_base_type::ub256;
 	}
-	else
-	{
-		return (vertex_base_type)in; 
-	}
+	fmt::throw_exception("Unknown vertex base type %d" HERE, in);
 }
 
 rsx::index_array_type rsx::to_index_array_type(u8 in)
