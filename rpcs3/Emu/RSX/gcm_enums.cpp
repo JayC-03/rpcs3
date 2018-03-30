@@ -227,14 +227,16 @@ namespace rsx
 
 	std::string to_string(surface_target target)
 	{
-		if (in > (u8)surface_target::enum_max) 
+		switch (target)
 		{
-			fmt::throw_exception("Unexpected enum found" HERE);
+		case surface_target::none: return "none";
+		case surface_target::surface_a: return "surface A";
+		case surface_target::surface_b: return "surface B";
+		case surface_target::surfaces_a_b: return "surfaces A and B";
+		case surface_target::surfaces_a_b_c: return "surfaces A, B and C";
+		case surface_target::surfaces_a_b_c_d: return "surfaces A,B, C and D";
 		}
-		else
-		{
-			return (surface_target)in;
-		}
+		fmt::throw_exception("Unexpected enum found" HERE);
 	}
 
 	std::string to_string(primitive_type draw_mode)
